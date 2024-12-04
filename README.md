@@ -3,12 +3,12 @@
 We will first focus on the DCM PGS, then extend this to BMI-adjusted and
 BMI-PGS conditional genetic risk in due course.
 
-The idea I have is to estimate the proportion of patients with gene
-elusive DCM who have disease explained by their DCM PGS. A simple
-approach would be partition the PGS (above certain level versus
-remainder) and then declare presence or absence of risk. Ultimately we
-want to provide an estimator of population attributable risk per
-individual, using likelihood ratios.
+The idea is to estimate the proportion of patients with gene elusive DCM
+who have disease explained by their DCM PGS. A simple approach would be
+partition the PGS (above certain level versus remainder) and then
+declare presence or absence of risk. Ultimately we want to provide an
+estimator of population attributable risk per individual, using
+likelihood ratios.
 
 ------------------------------------------------------------------------
 
