@@ -2,7 +2,7 @@
 title: "DCM PGS"
 author: "Nick Sunderland"
 date: "2024-12-04"
-output: html_document
+output: md_document
 ---
 
 ```{r setup, include=FALSE}
@@ -24,7 +24,7 @@ summary(cars)
 You can also embed plots, for example:
 
 ```{r pressure, echo=FALSE}
-plot(pressure)
+
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
