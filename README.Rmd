@@ -82,7 +82,7 @@ $$
 \text{AFE} = 1 - \frac{\text{Risk in unexposed}}{\text{Risk in exposed}}
 $$
 
-Where:
+Where:  
 - Risk in unexposed = baseline probability \(P(D) = 0.004\)  
 - Risk in exposed = post-test probability \(P(D \mid \text{exposed}) = 0.01262\)
 
