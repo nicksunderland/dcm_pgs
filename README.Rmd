@@ -1,6 +1,6 @@
 ---
 title: "DCM PGS"
-output: html_document #md_document
+output: md_document
 bibliography: "`r BibTexLibraries::get_bib_path('dcm_pgs')`"
 csl: "`r BibTexLibraries::get_bib_format('american-medical-association-no-et-al.csl')`"
 link-citations: true
