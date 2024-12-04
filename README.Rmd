@@ -1,30 +1,154 @@
 ---
 title: "DCM PGS"
-author: "Nick Sunderland"
-date: "2024-12-04"
-output: md_document
+output: html_document #md_document
+bibliography: "`r BibTexLibraries::get_bib_path('dcm_pgs')`"
+csl: "`r BibTexLibraries::get_bib_format('american-medical-association-no-et-al.csl')`"
+link-citations: true
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## Background
+We will first focus on the DCM PGS, then extend this to BMI-adjusted and BMI-PGS conditional genetic risk in due course.  
+ 
+The idea I have is to estimate the proportion of patients with gene elusive DCM who have disease explained by their DCM PGS. A simple approach would be partition the PGS (above certain level versus remainder) and then declare presence or absence of risk. Ultimately we want to provide an estimator of population attributable risk per individual, using likelihood ratios.  
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+---
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+## Datasets
+- Primary dataset – GoDCM Imperial cohort of 1500 patients
+- +/- another DCM case cohort
+- UK Biobank for additional population analyses
 
-```{r cars}
-summary(cars)
+---
+
+## Maths
+
+#### Prevalence and Odds
+
+The prevalence of dilated cardiomyopathy (DCM) is given as:
+
+$$
+P(D) = \frac{1}{250} = 0.004
+$$
+
+The odds of DCM (baseline or pre-test odds) can be calculated as:
+
+$$
+\text{Baseline odds} = \frac{P(D)}{1 - P(D)} = \frac{0.004}{1 - 0.004} = \frac{0.004}{0.996} \approx 0.004016
+$$
+
+#### Odds Ratio and Post-Test Probability
+
+The odds ratio (OR) per standard deviation (SD) of the polygenic score (PGS) is:
+
+$$
+\text{OR} = 1.76 \quad (95\% \, \text{CI: } 1.64 - 1.9)
+$$
+
+Using the likelihood ratio (LR) for the 99th percentile of the unaffected population (calculated from ST-4 calculator)@adPerformancePolygenicRisk2023:
+
+$$
+\text{LR}^+ = 3.18
+$$
+
+The post-test odds for DCM are calculated as:
+
+$$
+\text{Post-test odds} = \text{Baseline odds} \times \text{LR}^+
+$$
+
+$$
+\text{Post-test odds} = 0.004016 \times 3.18 \approx 0.01278
+$$
+
+Convert the post-test odds to post-test probability:
+
+$$
+\text{Post-test probability} = \frac{\text{Post-test odds}}{1 + \text{Post-test odds}}
+$$
+
+$$
+\text{Post-test probability} = \frac{0.01278}{1 + 0.01278} \approx 0.01262
+$$
+
+#### Attributable Fraction Among the Exposed (AFE)
+
+The attributable fraction among the exposed (AFE) is calculated as:
+
+$$
+\text{AFE} = 1 - \frac{\text{Risk in unexposed}}{\text{Risk in exposed}}
+$$
+
+Where:
+- Risk in unexposed = baseline probability \(P(D) = 0.004\)
+- Risk in exposed = post-test probability \(P(D \mid \text{exposed}) = 0.01262\)
+
+$$
+\text{AFE} = 1 - \frac{0.004}{0.01262}
+$$
+
+$$
+\text{AFE} = 1 - 0.3169 \approx 0.6831
+$$
+
+Thus, the attributable fraction among the exposed is approximately:
+
+$$
+\text{AFE} \approx 68.3\%
+$$
+
+---
+
+## Paper structure
+1. GREML h2SNP DCM UKB, versus heritability due to rare variation (need to find method)  
+
+2. Review RR thresholds on risk and use as a framework to determine thresholds
+https://clinicalgenome.org/working-groups/low-penetrance-risk-allele-working-group/  
+
+3. Estimate the proportion of cases with polygenic cause (then test in subsequent) see below working  
+```{r, echo=FALSE, out.width="50%"}
+knitr::include_graphics("pct_case_pgs_placeholder.png")
 ```
 
-## Including Plots
+4. GoDCM  
+    - Gene positive – P/ LP in DCM gene  
+    - Gene negative – other  
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-
+5. Distribution of PGS in gene+ versus gene –ve  
+```{r, echo=FALSE, out.width="50%"}
+knitr::include_graphics("pgs_dist_placeholder.png")
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+6. Identify gene neg with high polygenic score  
+```{r, echo=FALSE, out.width="50%"}
+knitr::include_graphics("pgs_dist_high_gene_neg_placeholder.png")
+```
+
+7. Apply ‘diagnostic’ thresholds according to above  
+
+8. Framework for calculating individual PAR  
+
+9. Using attached framework, plot PAR against PGS centiles  
+```{r, echo=FALSE, out.width="50%"}
+knitr::include_graphics("pgs_par_placeholder.png")
+```
+
+10. Conclude  
+    - ~1/20 patients with DCM polygenic cause
+    - Role of diagnosis in testing
+
+
+---
+
+## Useful papers 
+- Monogenic and Polygenic Contributions to Atrial Fibrillation Risk: Results from a National Biobank @choiMonogenicPolygenicContributions2020  
+- Assessing the contribution of rare variants to complex trait heritability from whole-genome sequence data @wainschteinAssessingContributionRare2022  
+- Role of titin in cardiomyopathy: from DNA variants to patient stratification @wareRoleTitinCardiomyopathy2018a  
+- Effect of potentially modifiable risk factors associated with myocardial infarction in 52 countries (the INTERHEART study): case-control study @yusufEffectPotentiallyModifiable2004  
+
+---
+
+## References

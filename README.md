@@ -1,26 +1,37 @@
-## R Markdown
+## DCM PGS analysis plan
 
-This is an R Markdown document. Markdown is a simple formatting syntax
-for authoring HTML, PDF, and MS Word documents. For more details on
-using R Markdown see <http://rmarkdown.rstudio.com>.
+The initial idea would be to focus on DCM PGS but I’m thinking you could
+explore BMI-adjusted and BMI PGS conditional genetic risk in due course.
+(linking to the adiposity theme of your PhD). Some sequence experience
+would be good to have.
 
-When you click the **Knit** button a document will be generated that
-includes both content as well as the output of any embedded R code
-chunks within the document. You can embed an R code chunk like this:
+The idea I have is to estimate the proportion of patients with gene
+elusive DCM who have disease explained by their DCM PGS. A simple
+approach would be partition the PGS (above certain level versus
+remainder) and then declare presence or absence of risk. We’re keen to
+extend to provide an estimator of population attributable risk per
+individual, using likelihood ratios.
 
-    summary(cars)
+The core idea is attached. There are many ways of calculating PAR and
+need to kick the tyres on this simplification, but I think this works.
 
-    ##      speed           dist       
-    ##  Min.   : 4.0   Min.   :  2.00  
-    ##  1st Qu.:12.0   1st Qu.: 26.00  
-    ##  Median :15.0   Median : 36.00  
-    ##  Mean   :15.4   Mean   : 42.98  
-    ##  3rd Qu.:19.0   3rd Qu.: 56.00  
-    ##  Max.   :25.0   Max.   :120.00
+Primary dataset – GoDCM Imperial cohort of 1500 patients +/- another DCM
+case cohort
 
-## Including Plots
+UKB for population stuff
 
-You can also embed plots, for example:
+## Paper structure
 
-Note that the `echo = FALSE` parameter was added to the code chunk to
-prevent printing of the R code that generated the plot.
+Possible manuscript structure
+
+GREML h2SNP DCM UKB, versus heritability due to rare variation (will dig
+out method) Review RR thresholds on risk and use as a framework to
+determine thresholds
+<https://clinicalgenome.org/working-groups/low-penetrance-risk-allele-working-group/>
+Estimate the proportion of cases with polygenic cause (then test in
+subsequent) see below working GoDCM Gene positive – P/ LP in DCM gene
+Gene negative – other Distribution of PGS in gene+ versus gene –
+Identify gene neg with high polygenic score Apply ‘diagnostic’
+thresholds according to above Framework for calculating individual PAR
+Using attached framework, plot PAR against PGS centiles Conclude ~1/20
+patients with DCM polygenic cause Role of diagnosis in testing
