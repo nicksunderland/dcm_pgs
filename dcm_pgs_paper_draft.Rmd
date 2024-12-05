@@ -348,25 +348,62 @@ invisible(dev.off())
 
 ## Introduction
 
-Y...
+Dilated cardiomyopathy (DCM) is a heterogeneous condition affecting the structure and function of the heart that has a high morbidity and mortality rate. There are multiple aetiological factors involved in the development of DCM, from monogenic genetic causes to environmental exposures. Current genetic testing identifies a culprit gene in approximately 15-25% of sporadic cases and 20-40% of patients with familial DCM. However, the heritability of is XX estimated from common variants suggests that there exists an underlying propensity to the development of DCM, how this interacts with different exposures over the life course is not fully understood. 
+
+In the clinic we are often faced with so called gene-elusive DCM, patients who display the phenotype but lack a known pathogenic variant. Polygenic risk scores can be used to determine the overall burden of DCM associated variants, identified from large genome-wide association studies. With knowledge of the baseline prevalence of DCM in the general population a polygenic risk score can be leveraged to estimate the population attributable risk for any particular individual.
+
+Currently, it is unclear how the family of gene-elusive patients should be screened and followed up. Current guidelines suggest ... however the penetrance of cases is low and better stratification is needed in order to utilised resources most effectively.
+
+Here, we show how a polygenic risk score for DCM, with appropriate thresholds, can be used in the diagnosis of 'polygenic DCM' and the population attributable risk for any particular genome in order to better communicate to patients the likely aetiology of their underlying condition. 
 
 ---
 
 ## Methods
 
-Y...
+#### Study population and phenotypes
+
+Sequencing data for 2,XXX individuals referred for dilated cardiomyopathy were collection from XX centers: X, Y, X.
+
+All research participants provided written informed consent, and the studies were reviewed and approved by the relevant research ethics committee (X, Y, Z).
+
+
+
+#### Genotyping, quality control and variant annotation
+
+
+#### Polygenic risk score calculation
+
+
+#### Statistical analysis
+
+
 
 ---
 
 ## Results
 
-Y...
+#### DCM gene status
+The distribution of DCM patients by DCM-gene status is presented in Figure 1. XX% of patients carried and pathogenic or likely-pathogenic genetic variant, XX% of patients carried a variant of unknown significance, and XX% of patients were classified as gene elusive DCM. 
+
+### Polygenic risk score
+The distributions of PGS by DCM-gene status and unaffected individuals is presented in Figure 2. The mean PGS was greatest in the gene-positive DCM cohort (XX), followed with the cohort with a variant of unknown significance (XX), and gene negative DCM (XX). Unaffected individuals had the lowest mean PGS (XX). 
+
+The PGS at a 'pathogenic' odds-ratio threshold of >=5 for DCM was XX and for the 'intermediate' odds-ratio threshold of 1.5 was XX (Figure 3). Categorising gene-elusive DCM cases using these thresholds showed that XX% of gene-elusive patients had a pathogenic DCM PGS and XX% had an intermediate PGS (Figure 4).
+
+### Population attributable risk
+The population attributable risk (PAR) per PGS centile is presented in Figure 5. Pathogenic and intermediate PGS thresholds had an explained PAR of XX% and XX% respectively.
+
+### Follow up
+The survival curves by polygenic risk stratification are shown in Figure X. 
 
 ---
 
 ## Discussion 
 
 Y...
+
+#### Conclusion
+Implementation of a dilated cardiomyopathy polygenic risk score can increase the diagnostic yield by X% with 'polygenic' cases of DCM. This has important implications for family screening and ongoing surveillance of individuals with gene-elusive DCM. 
 
 ---
 
