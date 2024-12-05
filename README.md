@@ -99,26 +99,22 @@ AFE ≈ 68.3%
     <https://clinicalgenome.org/working-groups/low-penetrance-risk-allele-working-group/>
 
 3.  Estimate the proportion of cases with polygenic cause (then test in
-    subsequent) see below working  
-    <img src="pct_case_pgs_placeholder.png" width="50%" />
+    subsequent) see below working
 
 4.  GoDCM
 
     -   Gene positive – P/ LP in DCM gene  
     -   Gene negative – other
 
-5.  Distribution of PGS in gene+ versus gene –ve  
-    <img src="pgs_dist_placeholder.png" width="50%" />
+5.  Distribution of PGS in gene+ versus gene –ve
 
-6.  Identify gene neg with high polygenic score  
-    <img src="pgs_dist_high_gene_neg_placeholder.png" width="50%" />
+6.  Identify gene neg with high polygenic score
 
 7.  Apply ‘diagnostic’ thresholds according to above
 
 8.  Framework for calculating individual PAR
 
-9.  Using attached framework, plot PAR against PGS centiles  
-    <img src="pgs_par_placeholder.png" width="50%" />
+9.  Using attached framework, plot PAR against PGS centiles
 
 10. Conclude
 
