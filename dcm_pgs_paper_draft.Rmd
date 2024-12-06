@@ -46,7 +46,8 @@ set.seed(123)
 
 # simulate te dataset
 dat <- data.table(
-  id          = sprintf(paste0("ID_%0", ceiling(log10(n_individuals+1)), "d"), 1:n_individuals), 
+  id          = sprintf(paste0("ID_%0", ceiling(log10(n_individuals+1)), "d"), 1:n_individuals),
+  sex         = factor(sample(c("male", "female"), n_individuals, replace = TRUE), levels = c("male", "female")),
   gene_status = factor(sample(x       = names(gene_statuses), 
                               size    = n_individuals, 
                               replace = TRUE, 
@@ -55,6 +56,13 @@ dat <- data.table(
 )
 dat[, dcm_status := factor(gene_status=="No DCM", levels=c(T,F), labels=c("No DCM", "DCM"))]
 dat[, pgs := rnorm(.N, mean = gene_statuses[[as.character(gene_status)]]$mean_pgs, sd = 1), by = .(gene_status)]
+dat[, age := ifelse(dcm_status == "DCM", 
+                    pmin(pmax(rnorm(.N, mean = 55, sd = 10), 18), 95), 
+                    pmin(pmax(rnorm(.N, mean = 45, sd = 15), 18), 95))] 
+dat[, age_cat := cut(age,
+                     breaks = seq(0, 100, by = 20),
+                     labels = c("0-19", "20-39", "40-59", "60-79", "80+"), 
+                     right = FALSE)]
 
 # view
 knitr::kable(unique(dat, by="gene_status"))
@@ -408,3 +416,96 @@ Implementation of a dilated cardiomyopathy polygenic risk score can increase the
 ---
 
 ## References
+
+
+
+
+### Odds ratio by age category testings
+```{r, warning=FALSE, message=FALSE, eval=F}
+# calculate the odds ratio of DCM by PGS quantile 
+dat2 <- copy(dat)
+n_quantiles <- 10
+quantiles   <- c(0, 1, 5, 10, 20, 40, 60, 80, 90, 95, 99, 100)
+dat2[, pgs_quantile := cut(pgs, 
+                           breaks = quantile(pgs, probs = quantiles/100, na.rm = TRUE), 
+                           labels = c(paste0("<",quantiles[2]), 
+                                      paste0(quantiles[2:(length(quantiles)-2)], "-", quantiles[3:(length(quantiles)-1)]), 
+                                      paste0(">", quantiles[length(quantiles)-1])), 
+                            include.lowest = TRUE), by="age_cat"]
+dat2[, pgs_percentile := cut(pgs, 
+                            breaks = quantile(pgs, probs = seq(0,1,0.01), na.rm = TRUE), 
+                            labels = seq(1,100,1), 
+                            include.lowest = TRUE), by="age_cat"]
+or_table2 <- expand.grid(pgs_quantile = unique(dat2$pgs_quantile), 
+                         age_cat      = unique(dat2$age_cat)) |> as.data.table()
+
+continuity_correction <- 0.5
+
+or_table2[, `:=`(
+  dcm_cases_in_group    = dat2[pgs_quantile == .BY[[1]] & age_cat == .BY[[2]] & dcm_status != "No DCM", .N + continuity_correction],
+  dcm_controls_in_group = dat2[pgs_quantile == .BY[[1]] & dcm_status == "No DCM", .N + continuity_correction],
+  dcm_cases_rest        = dat2[pgs_quantile != .BY[[1]] & age_cat == .BY[[2]] & dcm_status != "No DCM", .N + continuity_correction],
+  dcm_controls_rest     = dat2[pgs_quantile != .BY[[1]] & dcm_status == "No DCM", .N + continuity_correction]
+), by = .(pgs_quantile, age_cat)]
+or_table2[, `:=`(
+  odds_in_group = dcm_cases_in_group / dcm_controls_in_group,
+  odds_in_rest  = dcm_cases_rest / dcm_controls_rest
+)]
+or_table2[, `:=`(odds_ratio    = odds_in_group / odds_in_rest, 
+                se_log_or     = sqrt(1 / dcm_cases_in_group + 
+                                     1 / dcm_controls_in_group + 
+                                     1 / dcm_cases_rest + 
+                                     1 / dcm_controls_rest))]
+or_table2[, `:=`(log_or   = log(odds_ratio))]
+or_table2[, `:=`(ci_lower = exp(log_or - 1.96 * se_log_or),
+                ci_upper = exp(log_or + 1.96 * se_log_or))]
+
+# model the odds ratio across PGS quantile and extract the thresholds of 5 and 1.5
+or_table2[, pgs_midpoint := as.numeric(sub("-.*", "", as.character(pgs_quantile))) + (as.numeric(sub(".*-", "", as.character(pgs_quantile))) - as.numeric(sub("-.*", "", as.character(pgs_quantile)))) / 2]
+or_table2[as.character(pgs_quantile) == "<1", pgs_midpoint := 0.5]
+or_table2[as.character(pgs_quantile) == ">99", pgs_midpoint := 99.5]
+
+
+spline_models <- or_table2[, .(
+  model = list(lm(log(odds_ratio) ~ ns(pgs_midpoint, df = 6), data = .SD))
+), by = age_cat]
+
+pred_pgs_values <- seq(0,100,0.01)
+predicted_or <- spline_models[, .(
+  pgs_quantile_val = pred_pgs_values,
+  pred_or = exp(predict(model[[1]], newdata = data.frame(pgs_midpoint = pred_pgs_values)))
+), by = age_cat]
+
+# predict the thresholds from the fit 
+
+pgs_thresholds <- data.table(
+  or_thresh  = rep(c(1.5, 5.0), length(unique(predicted_or$age_cat))),
+  thresh_lab = rep(c("intermediate", "pathogenic"), length(unique(predicted_or$age_cat))),
+  age_cat    = rep(unique(predicted_or$age_cat), 2)
+)
+
+pgs_thresholds[, pgs_cutoff := mapply(function(thresh, age) predicted_or[age_cat==age][which.min(abs(pred_or-thresh)), pgs_quantile_val], or_thresh, age_cat)]
+
+
+
+foo <- ggplot(or_table2[age_cat!="0-19"], aes(x = pgs_midpoint, y = odds_ratio)) +
+  geom_hline(yintercept = 1.0, color="darkgray", linetype = "dotted") +
+  #geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), width=0.3, color="darkgray") + 
+  geom_point(size=4) +
+  geom_line(data = predicted_or[age_cat!="0-19"], 
+            aes(x = pgs_quantile_val, y = pred_or, group=1), color = "darkred", inherit.aes = FALSE) +
+  geom_segment(data = pgs_thresholds[age_cat!="0-19"], aes(x=0, xend = pgs_cutoff, y = or_thresh, yend = or_thresh, color = thresh_lab), inherit.aes = F, linetype = "dashed") +
+  geom_segment(data = pgs_thresholds[age_cat!="0-19"], aes(y=0, yend = or_thresh, x =pgs_cutoff, xend=pgs_cutoff, color = thresh_lab), inherit.aes = F, linetype = "dashed") +
+  geom_text(data = pgs_thresholds[age_cat!="0-19"], aes(x=0, y = or_thresh, label = paste0(thresh_lab, " OR=",or_thresh, " (", sprintf("%.0f%%", pgs_cutoff), ")"),  color = thresh_lab), vjust=-1, hjust=0, inherit.aes = F, show.legend = FALSE) +
+  theme_classic(base_size = 22) +
+  labs(x = "PGS quantile", 
+       y = "OR for DCM") +
+  guides(color = "none") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1)) +
+  facet_wrap(~age_cat, scales="free") 
+
+foo
+png(file.path(dir, "figures", "foo.png"), width=1000, height=700)
+foo
+invisible(dev.off())
+```
