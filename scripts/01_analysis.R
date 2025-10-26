@@ -8,25 +8,59 @@ library(plotly)
 fp_dcm <- file.path(Sys.getenv("DCM_PGS_DIR"), "data", "anon_data.csv")
 fp_gen <- NULL
 N <- 300000
-fp_gen <- "/mnt/project/dcm/score/score_ukb_pgs.sscore"
-fp_pheno <- "/mnt/project/hermes3_data/hermes3_phenotypes.tsv.gz"
+#fp_gen <- "/mnt/project/dcm_pgs/score/score_ukb_pgs.sscore"
+#fp_pheno <- "/mnt/project/hermes3_data/hermes3_phenotypes.tsv.gz"
 
 
 # read ====
+dcm <- fread(fp_dcm)
 dat <- rbindlist(list(
-  dcm = fread(fp_dcm), 
+  dcm = dcm, 
   no_dcm = if (is.null(fp_gen)) {
+    mean_no_ukb    <- -0.007080866   # UKB no_dcm mean
+    sd_no_ukb      <-  0.9982858     # UKB no_dcm sd
+    mean_ukb_dcm   <-  0.389993616   # UKB ukb_dcm mean
+    sd_ukb_dcm     <-  1.0041108     # UKB ukb_dcm sd
+    delta_mean     <-  0.3970745     # provided
+    mean_local_dcm <- mean(dcm$Zheng_PRS, na.rm = T)
+    sd_local_dcm   <- sd(dcm$Zheng_PRS, na.rm = T)
+    n_sim          <- 300000L
+    mean_sim_no    <- mean_local_dcm - delta_mean
+    sim_sd         <- sd_no_ukb * (sd_local_dcm / sd_ukb_dcm)
     data.table(
-      earlier_age = sample(0:100, size=N, replace=TRUE),
+      earlier_age = sample(0:100, size=n_sim, replace=TRUE),
       tier_status = "no_dcm",
-      Zheng_PRS   = rnorm(N, mean = -0.5, sd = 1),
-      reported_sex= sample(c("F","M"), size=N, replace=TRUE)
+      Zheng_PRS   = rnorm(n_sim, mean = mean_sim_no, sd = sim_sd),
+      reported_sex= sample(c("F","M"), size=n_sim, replace=TRUE)
     )[, genetic_sex := reported_sex]
   } else {
     d <- fread(fp_gen)
     pheno <- fread(fp_pheno)
+    d[pheno, `:=`(
+      PC1 = i.PC1,
+      PC2 = i.PC2,
+      PC3 = i.PC3,
+      PC4 = i.PC4,
+      PC5 = i.PC5,
+      PC6 = i.PC6,
+      PC7 = i.PC7,
+      PC8 = i.PC8,
+      PC9 = i.PC9,
+      PC10 = i.PC10,
+      dcm = i.pheno4,
+      control = i.cm_control
+    ), on = c("#FID" = "eid")]
+    d[, gene_status := factor(
+      fcase(dcm==TRUE, "ukb_dcm", control==TRUE, "no_dcm", default=NA_character_), 
+      levels = c("no_dcm","ukb_dcm","gene_neg","gene_vus","gene_pos")
+    )]
+    model <- lm(PRS_sum ~ PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8 + PC9 + PC10, data = d)
+    d[, PRS_resid := resid(model)]
+    d[, prs := as.numeric(scale(PRS_resid)[, 1])]
+    dat = d[!is.na(gene_status), .(eid = IID, prs, gene_status)]
   }
 ), idcol = "dcm_status")
+dat[, dcm_status := factor(dcm_status, levels = c("no_dcm", "dcm"))]
 
 
 # clean ====
@@ -44,7 +78,11 @@ summary(dat)
 
 
 # ==== compute medians ====
-meds <- dat[, .(median_prs = median(prs, na.rm = TRUE)), by = gene_status]
+meds <- dat[, .(median_prs = median(prs, na.rm = TRUE), 
+                mean_prs   = mean(prs, na.rm = TRUE), 
+                sd_prs     = sd(prs, na.rm = TRUE)), by = gene_status]
+# delta_mean <- meds[gene_status=="ukb_dcm", mean_prs] - meds[gene_status=="no_dcm", mean_prs]
+# delta_mean
 
 
 # plot PRS distributions ====
@@ -78,62 +116,58 @@ prs_thresholds <- data.table(
 
 
 # calculate ORs by PGS quantile ====
-quantiles   <- c(0, 1, 5, 10, 20, 40, 60, 80, 90, 95, 99, 100)
-dat[, prs_quantile := cut(prs, 
-                          breaks = quantile(prs, probs = quantiles/100, na.rm = TRUE), 
-                          labels = c(paste0("<",quantiles[2]), 
-                                     paste0(quantiles[2:(length(quantiles)-2)], "-", quantiles[3:(length(quantiles)-1)]), 
-                                     paste0(">", quantiles[length(quantiles)-1])), 
-                          include.lowest = TRUE)]
-dat[, prs_percentile := cut(prs, 
-                            breaks = quantile(prs, probs = seq(0,1,0.01), na.rm = TRUE), 
-                            labels = seq(1,100,1), 
-                            include.lowest = TRUE)]
-or_table <- data.table(prs_quantile = unique(dat$prs_quantile))
-or_table[, `:=`(
-  dcm_cases_in_group    = dat[prs_quantile == .BY[[1]] & gene_status != "No DCM", .N],
-  dcm_controls_in_group = dat[prs_quantile == .BY[[1]] & gene_status == "No DCM", .N],
-  dcm_cases_rest        = dat[prs_quantile != .BY[[1]] & gene_status != "No DCM", .N],
-  dcm_controls_rest     = dat[prs_quantile != .BY[[1]] & gene_status == "No DCM", .N]
-), by = prs_quantile]
-or_table[, `:=`(
-  odds_in_group = dcm_cases_in_group / dcm_controls_in_group,
-  odds_in_rest  = dcm_cases_rest / dcm_controls_rest
-)]
-or_table[, `:=`(odds_ratio    = odds_in_group / odds_in_rest, 
-                se_log_or     = sqrt(1 / dcm_cases_in_group + 
-                                       1 / dcm_controls_in_group + 
-                                       1 / dcm_cases_rest + 
-                                       1 / dcm_controls_rest))]
-or_table[, `:=`(log_or   = log(odds_ratio))]
-or_table[, `:=`(ci_lower = exp(log_or - 1.96 * se_log_or),
-                ci_upper = exp(log_or + 1.96 * se_log_or))]
+quantiles    <- c(0, 1, 5, 10, 20, 40, 60, 80, 90, 95, 99, 100)
+quant_breaks <- quantile(dat[dcm_status=="no_dcm", prs], probs = quantiles/100, na.rm = TRUE)
+quant_labs   <- c(paste0("<",quantiles[2]), 
+                  paste0(quantiles[2:(length(quantiles)-2)], "-", quantiles[3:(length(quantiles)-1)]), 
+                  paste0(">", quantiles[length(quantiles)-1]))
+dat[, prs_quantile := cut(prs, breaks = quant_breaks, labels = quant_labs, include.lowest = TRUE)]
+percentiles <- seq(0,100,1)
+cent_breaks <- quantile(dat[dcm_status=="no_dcm", prs], probs = percentiles/100, na.rm = TRUE)
+dat[, prs_percentile := cut(prs, breaks = cent_breaks, labels = percentiles[-1], include.lowest = TRUE)]
+
+
+model <- glm(dcm_status ~ relevel(prs_quantile, "40-60"), data = dat, family = binomial)
+or_table <- data.table()[, {
+  coefs <- summary(model)$coefficients
+  coefs <- coefs[2:nrow(coefs),]
+  terms <- sub('^relevel\\(prs_quantile, "40-60"\\)', '', rownames(coefs))
+  r <- data.table(
+    prs_quantile = factor(terms, levels = levels(dat$prs_quantile)),
+    OR           = exp(coefs[,1]),
+    lower        = exp(coefs[, 1] - 1.96 * coefs[, 2]),
+    upper        = exp(coefs[, 1] + 1.96 * coefs[, 2]),
+    p_value      = coefs[, 4]
+  )
+  rbind(
+    data.table(
+      prs_quantile = factor(setdiff(levels(dat$prs_quantile), unique(r$prs_quantile)), levels = levels(dat$prs_quantile)),
+      OR           = 1
+    ),
+    r, 
+    fill = TRUE
+  )
+}]
+levels(or_table$prs_quantile) <- levels(dat$prs_quantile)
+or_table <- or_table[order(prs_quantile)]
 
 # model the odds ratio across PGS quantile and extract the thresholds of 5 and 1.5
-or_table[, pgs_midpoint := as.numeric(sub("-.*", "", as.character(prs_quantile))) + (as.numeric(sub(".*-", "", as.character(prs_quantile))) - as.numeric(sub("-.*", "", as.character(prs_quantile)))) / 2]
-or_table[as.character(prs_quantile) == "<1", pgs_midpoint := 0.5]
-or_table[as.character(prs_quantile) == ">99", pgs_midpoint := 99.5]
+or_table[, prs_midpoint := as.numeric(sub("-.*", "", as.character(prs_quantile))) + (as.numeric(sub(".*-", "", as.character(prs_quantile))) - as.numeric(sub("-.*", "", as.character(prs_quantile)))) / 2]
+or_table[as.character(prs_quantile) == "<1", prs_midpoint := 0.5]
+or_table[as.character(prs_quantile) == ">99", prs_midpoint := 99.5]
 
-spline_model <- lm(log(odds_ratio) ~ splines::ns(pgs_midpoint, df = 6), data = or_table)
+spline_model <- lm(log(OR) ~ splines::ns(prs_midpoint, df = 3), data = or_table)
 pred_prs_values <- seq(0,100,0.01)
 predicted_or <- data.table(prs_quantile_val = pred_prs_values, 
                            pred_or          = exp(predict(spline_model, 
-                                                          newdata = data.frame(pgs_midpoint = pred_pgs_values))))
+                                                          newdata = data.frame(prs_midpoint = pred_prs_values))))
 
 # predict the thresholds from the fit 
 prs_thresholds[, prs_cutoff := sapply(or_thresh, function(x) predicted_or[which.min(abs(pred_or-x)), prs_quantile_val])]
 prs_thresholds[, prs := sapply(prs_cutoff, function(x) dat[ceiling(x)==as.numeric(prs_percentile), mean(prs, na.rm=T)])]
 
-dat <- dat[
-  prs_thresholds, 
-  on = .(prs > prs), 
-  `:=`(thresh_lab = paste0(i.thresh_lab, " PGS"))
-]
-dat[is.na(thresh_lab), `:=`(thresh_lab = "low PGS")]
 
-
-
-ggplot(or_table, aes(x = pgs_midpoint, y = odds_ratio, ymin = ci_lower, ymax = ci_upper)) +
+ggplot(or_table, aes(x = prs_midpoint, y = OR, ymin = lower, ymax = upper)) +
   geom_hline(yintercept = 1.0, color="darkgray", linetype = "dotted") +
   geom_pointrange() +
   geom_line(data = predicted_or, 
@@ -160,6 +194,14 @@ ggplot(dat, aes(x = prs, fill = gene_status)) +
         axis.ticks.y = element_blank(), 
         axis.title.y = element_blank())
 
+
+
+dat <- dat[
+  prs_thresholds, 
+  on = .(prs > prs), 
+  `:=`(thresh_lab = paste0(i.thresh_lab, " PGS"))
+]
+dat[is.na(thresh_lab), `:=`(thresh_lab = "low PGS")]
 
 sunburst_data <- rbind(
   dat[dcm_status == "dcm", .(gene_status = "DCM", thresh_lab = "", N = .N)],
@@ -239,11 +281,11 @@ sd_lines <- data.table(y = c(ecdf(dat$prs)(mean(dat$prs) - 2*sd(dat$prs)),
                        text  = c("-2SD", "-1SD", "Mean", "+1SD", "+2SD"))
 
 ggplot((dat[, .(dcm_count = sum(dcm_status == "dcm"), total_count = .N), by = prs_percentile]
-              [order(as.numeric(prs_percentile)), ]
-              [, `:=`(cumulative_dcm_count   = cumsum(dcm_count))]
-              [, `:=`(cumulative_proportion  = cumulative_dcm_count / dat[dcm_status == "dcm", .N])]
-              [, `:=`(se                     = sqrt((cumulative_proportion * (1 - cumulative_proportion)) / dat[dcm_status == "dcm", .N]))]), 
-             aes(y = as.numeric(prs_percentile)/100, x = cumulative_proportion, group=1)) +
+        [order(as.numeric(prs_percentile)), ]
+        [, `:=`(cumulative_dcm_count   = cumsum(dcm_count))]
+        [, `:=`(cumulative_proportion  = cumulative_dcm_count / dat[dcm_status == "dcm", .N])]
+        [, `:=`(se                     = sqrt((cumulative_proportion * (1 - cumulative_proportion)) / dat[dcm_status == "dcm", .N]))]), 
+       aes(y = as.numeric(prs_percentile)/100, x = cumulative_proportion, group=1)) +
   geom_hline(data = sd_lines, aes(yintercept=y), linetype = "dotted", linewidth=1) +
   geom_text(data = sd_lines, aes(y=y, x=x, label=text), vjust=-0.3, hjust=0, size=5) +
   geom_line() + 
