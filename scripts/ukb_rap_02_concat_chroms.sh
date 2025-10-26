@@ -1,0 +1,44 @@
+#!/bin/bash
+# ---- launch_pgs_jobs.sh ----
+# Run Swiss Army Knife concantenation on UK Biobank RAP
+# Author: nicholas.sunderland@bristol.ac.uk
+
+# --- Config ---
+PROJECT="HERMES3"
+
+# --- Login (if needed) ---
+if ! dx whoami &>/dev/null; then
+  echo "🔐 Not logged in. Opening RAP login page..."
+  dx login
+fi
+
+# --- Select project ---
+echo "📁 Selecting RAP project: $PROJECT"
+dx select "$PROJECT"
+
+# --- Confirm environment ---
+echo "✅ Using project:"
+dx env
+
+# --- Concat chromosomes ---
+echo "🚀 Concatenating chromosomes"
+
+MOUNT_ARGS=()
+FILES=""
+for CHR in {1..22}; do
+  MOUNT_ARGS+=("-iin=/dcm_pgs/${CHR}/dcm_pgs_chr${CHR}_subset.bgen")
+  FILES="${FILES} dcm_pgs_chr${CHR}_subset.bgen"
+done
+
+dx run swiss-army-knife \
+  "${MOUNT_ARGS[@]}" \
+  -icmd="cat-bgen -g ${FILES} -og combined_ukb_pgs.bgen -clobber" \
+  --tag "chr_cat" \
+  -imount_inputs=true \
+  --instance-type "mem1_ssd2_v2_x4" \
+  --priority normal \
+  --name "concatenate_chromosomes" \
+  --destination "/dcm_pgs/combined/" \
+  --yes
+
+echo "🎉 Jobs submitted!"

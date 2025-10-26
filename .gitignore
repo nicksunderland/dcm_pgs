@@ -1,5 +1,16 @@
+# R project user and history files
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
+
+# pycharm files
+.idea
+
+
+# macOS system files
 *.DS_Store
+
+# Ignore everything in data/, but keep the folder itself
+data/*
+!data/.gitkeep
