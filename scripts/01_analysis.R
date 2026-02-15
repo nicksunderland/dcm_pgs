@@ -5,7 +5,7 @@ library(plotly)
 
 
 # file paths ====
-fp_dcm <- file.path(Sys.getenv("DCM_PGS_DIR"), "data", "anon_data.csv")
+fp_dcm <- file.path(Sys.getenv("DCM_PGS_DIR"), "data", "anon_data_v2.csv")
 fp_gen <- NULL
 N <- 300000
 #fp_gen <- "/mnt/project/dcm_pgs/score/score_ukb_pgs.sscore"
