@@ -8,12 +8,19 @@ library(plotly)
 fp_dcm <- file.path(Sys.getenv("DCM_PGS_DIR"), "data", "anon_data_v2.csv")
 fp_gen <- NULL
 N <- 300000
+#fp_ukb_pcs <- "/mnt/project/dcm_pgs/ukb_gnomad_projected_pcs.tsv.bgz"
 #fp_gen <- "/mnt/project/dcm_pgs/score/score_ukb_pgs.sscore"
 #fp_pheno <- "/mnt/project/hermes3_data/hermes3_phenotypes.tsv.gz"
 
 
 # read ====
+pc_files <- list.files(fp_ukb_pcs, full.names=TRUE)
+pc_files <- pc_files[grepl("part-", basename(pc_files))]
+pc_list <- lapply(pc_files, fread)
+ukb_pcs <- rbindlist(pc_list, use.names=TRUE, fill=TRUE)
+
 dcm <- fread(fp_dcm)
+
 dat <- rbindlist(list(
   dcm = dcm, 
   no_dcm = if (is.null(fp_gen)) {
@@ -37,6 +44,10 @@ dat <- rbindlist(list(
     d <- fread(fp_gen)
     pheno <- fread(fp_pheno)
     d[pheno, `:=`(
+      dcm = i.pheno4,
+      control = i.cm_control
+    ), on = c("#FID" = "eid")]
+    d[ukb_pcs, `:=`(
       PC1 = i.PC1,
       PC2 = i.PC2,
       PC3 = i.PC3,
@@ -46,9 +57,7 @@ dat <- rbindlist(list(
       PC7 = i.PC7,
       PC8 = i.PC8,
       PC9 = i.PC9,
-      PC10 = i.PC10,
-      dcm = i.pheno4,
-      control = i.cm_control
+      PC10 = i.PC10
     ), on = c("#FID" = "eid")]
     d[, gene_status := factor(
       fcase(dcm==TRUE, "ukb_dcm", control==TRUE, "no_dcm", default=NA_character_), 
